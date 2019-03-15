@@ -3,6 +3,8 @@ from torch.autograd import gradcheck
 import torch
 from torch.autograd import Variable
 
+from manopth import argutils
+
 
 def quat2mat(quat):
     """Convert quaternion coefficients to rotation matrix.
