@@ -26,7 +26,7 @@ with open("README.md", "r") as fh:
 check_dependencies()
 
 setup(
-    name="manopth-hassony2",
+    name="manopth",
     version="0.0.1",
     author="Yana Hasson",
     author_email="yana.hasson.inria@gmail.com",

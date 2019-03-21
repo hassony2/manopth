@@ -52,15 +52,15 @@ If you find this code useful for your research, consider citing:
 - `cd manopth`
 - Install the dependencies listed in [environment.yml](environment.yml)
   - In an existing conda environment, `conda env update -f environment.yml`
-  - In a new environment, `conda env create -f environment.yml`, will create a **manopth** conda environment
+  - In a new environment, `conda env create -f environment.yml`, will create a conda environment named `manopth`
 
 ## Download MANO pickle data-structures
 
 - Go to [MANO website](http://mano.is.tue.mpg.de/)
 - Create an account by clicking *Sign Up* and provide your information
-- Download Models and Code (the downloaded file should have the format mano_v*_*.zip). Note that all code and data from this download falls under the [MANO license](http://mano.is.tue.mpg.de/license).
-- unzip and copy the *models* folder into the manopth/mano folder
-- Your structure should look like this:
+- Download Models and Code (the downloaded file should have the format `mano_v*_*.zip`). Note that all code and data from this download falls under the [MANO license](http://mano.is.tue.mpg.de/license).
+- unzip and copy the `models` folder into the `manopth/mano` folder
+- Your folder structure should look like this:
 ```
 manopth/
   mano/
@@ -73,23 +73,22 @@ manopth/
     ...
 ```
 
-To check that everything is going well, run `python manopth/manopth_mindemo.py`, which should generafrom te a random hand using the MANO layer !
+To check that everything is going well, run `python examples/manopth_mindemo.py`, which should generate from a random hand using the MANO layer !
 
-## Install as local package
+## Install `manopth` package
 
-To be able to import and use *ManoLayer* in another project
+To be able to import and use `ManoLayer` in another project, go to your `manopth` folder and run `pip install .`
 
-`python setup.py install`
 
 `cd /path/to/other/project`
 
-You can now `from manopth import ManoLayer` in this other project!
+You can now use `from manopth import ManoLayer` in this other project!
 
 # Usage 
 
 ## Minimal usage script
 
-See [manopth_mindemo.py](manopth_mindemo.py)
+See [examples/manopth_mindemo.py](examples/manopth_mindemo.py)
 
 Simple forward pass with random pose and shape parameters through MANO layer
 
@@ -103,7 +102,7 @@ batch_size = 10
 ncomps = 6
 
 # Initialize MANO layer
-mano_layer = ManoLayer(mano_root='path/to/mano/models', use_pca=True, ncomps=ncomps)
+mano_layer = ManoLayer(mano_root='mano/models', use_pca=True, ncomps=ncomps)
 
 # Generate random shape parameters
 random_shape = torch.rand(batch_size, 10)
@@ -121,7 +120,9 @@ Result :
 
 ## Demo 
 
-With more options, forward and backward pass, and a loop for quick profiling
+With more options, forward and backward pass, and a loop for quick profiling, look at [examples/manopth_demo.py](examples/manopth_demo.py).
 
-`python manopth_demo.py`
+You can run it locally with:
+
+`python examples/manopth_demo.py`
 
