@@ -1,3 +1,9 @@
+"""
+This part reuses code from https://github.com/MandyMo/pytorch_HMR/blob/master/src/util.py
+which is part of a PyTorch port of SMPL.
+Thanks to Zhang Xiong (MandyMo) for making this great code available on github !
+"""
+
 import argparse
 from torch.autograd import gradcheck
 import torch
