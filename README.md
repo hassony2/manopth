@@ -18,6 +18,8 @@ See code [coming soon](https://github.com/hassony2/obman)
 
 It [reuses](https://github.com/hassony2/manopth/blob/master/manopth/rodrigues_layer.py) [part of the great code](https://github.com/MandyMo/pytorch_HMR/blob/master/src/util.py) from the  [Pytorch layer for the SMPL body model](https://github.com/MandyMo/pytorch_HMR/blob/master/README.md) by Zhang Xiong ([MandyMo](https://github.com/MandyMo)) to compute the rotation utilities !
 
+It also includes in `mano/webuser` partial content of files from the original [MANO](http://mano.is.tue.mpg.de) code ([posemapper.py](mano/webuser/posemapper.py), [serialization.py](mano/webuser/serialization.py), [lbs.py](mano/webuser/lbs.py), [verts.py](mano/webuser/verts.py), [smpl_handpca_wrapper_HAND_only.py](mano/webuser/smpl_handpca_wrapper_HAND_only.py))
+
 If you find this code useful for your research, consider citing:
 
 - the original [MANO](http://mano.is.tue.mpg.de) publication:
