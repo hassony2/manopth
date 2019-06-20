@@ -48,6 +48,8 @@ If you find this code useful for your research, consider citing:
 }
 ```
 
+The training code associated with this paper, compatible with manopth can be found [here](https://github.com/hassony2/obman_train). Tje release includes a model trained on a variety of hand datasets.
+
 # Installation
 
 ## Get code and dependencies
