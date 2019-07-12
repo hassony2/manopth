@@ -14,7 +14,8 @@ The code is mostly a PyTorch port of the original [MANO](http://mano.is.tue.mpg.
 It therefore builds directly upon the work of Javier Romero, Dimitrios Tzionas and Michael J. Black.
 
 This layer was developped and used for the paper *Learning joint reconstruction of hands and manipulated objects* for CVPR19.
-See code [coming soon](https://github.com/hassony2/obman)
+See [project page](https://github.com/hassony2/obman) and [demo+training code](https://github.com/hassony2/obman_train).
+
 
 It [reuses](https://github.com/hassony2/manopth/blob/master/manopth/rodrigues_layer.py) [part of the great code](https://github.com/MandyMo/pytorch_HMR/blob/master/src/util.py) from the  [Pytorch layer for the SMPL body model](https://github.com/MandyMo/pytorch_HMR/blob/master/README.md) by Zhang Xiong ([MandyMo](https://github.com/MandyMo)) to compute the rotation utilities !
 
