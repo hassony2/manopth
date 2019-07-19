@@ -1,4 +1,5 @@
 from setuptools import find_packages, setup
+import warnings
 
 DEPENDENCY_PACKAGE_NAMES = ["matplotlib", "torch", "tqdm", "numpy", "cv2",
                             "chumpy"]
@@ -13,7 +14,7 @@ def check_dependencies():
             missing_dependencies.append(package_name)
 
     if missing_dependencies:
-        raise ValueError(
+        warnings.warn(
             'Missing dependencies: {}. We recommend you follow '
             'the installation instructions at '
             'https://github.com/hassony2/manopth#installation'.format(
