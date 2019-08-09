@@ -7,5 +7,6 @@ dependencies:
   - numpy
   - pytorch
   - tqdm
+  - git
   - pip:
     - git+https://github.com/hassony2/chumpy.git
