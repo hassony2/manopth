@@ -18,7 +18,8 @@ if __name__ == '__main__':
         action='store_true',
         help="Disable display output of ManoLayer given random inputs")
     parser.add_argument('--side', default='left', choices=['left', 'right'])
-    parser.add_argument('--random_shape', action='store_true')
+    parser.add_argument('--random_shape', action='store_true', help="Random hand shape")
+    parser.add_argument('--rand_mag', type=float, default=1, help="Controls pose variability")
     parser.add_argument(
         '--flat_hand_mean',
         action='store_true',
@@ -31,6 +32,7 @@ if __name__ == '__main__':
         "Use for quick profiling of forward and backward pass accross ManoLayer"
     )
     parser.add_argument('--mano_root', default='mano/models')
+    parser.add_argument('--root_rot_mode', default='axisang', choices=['rot6d', 'axisang'])
     parser.add_argument(
         '--mano_ncomps', default=6, type=int, help="Number of PCA components")
     args = parser.parse_args()
@@ -41,12 +43,16 @@ if __name__ == '__main__':
         flat_hand_mean=args.flat_hand_mean,
         side=args.side,
         mano_root=args.mano_root,
-        ncomps=args.mano_ncomps)
+        ncomps=args.mano_ncomps,
+        root_rot_mode=args.root_rot_mode)
     n_components = 6
-    rot = 3
+    if args.root_rot_mode == 'axisang':
+        rot = 3
+    else:
+        rot = 6
 
     # Generate random pose coefficients
-    pose_params = torch.rand(args.batch_size, n_components + rot)
+    pose_params = args.rand_mag * torch.rand(args.batch_size, n_components + rot)
     pose_params.requires_grad = True
     if args.random_shape:
         shape = torch.rand(args.batch_size, 10)

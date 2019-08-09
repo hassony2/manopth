@@ -5,7 +5,7 @@ import torch
 from torch.nn import Module
 
 from mano.webuser.smpl_handpca_wrapper_HAND_only import ready_arguments
-from manopth import rodrigues_layer, rotproj
+from manopth import rodrigues_layer, rotproj, rot6d
 from manopth.tensutils import (th_posemap_axisang, th_with_zeros, th_pack,
                                subtract_flat_id, make_list)
 
@@ -22,7 +22,8 @@ class ManoLayer(Module):
                  ncomps=6,
                  side='right',
                  mano_root='mano/models',
-                 use_pca=True):
+                 use_pca=True,
+                 root_rot_mode='axisang'):
         """
         Args:
             center_idx: index of center joint in our computations,
@@ -38,10 +39,14 @@ class ManoLayer(Module):
         super().__init__()
 
         self.center_idx = center_idx
-        self.rot = 3
+        if root_rot_mode == 'axisang':
+            self.rot = 3
+        else:
+            self.rot = 6
         self.flat_hand_mean = flat_hand_mean
         self.side = side
         self.use_pca = use_pca
+        self.root_rot_mode = root_rot_mode
         if use_pca:
             self.ncomps = ncomps
         else:
@@ -114,17 +119,28 @@ class ManoLayer(Module):
         batch_size = th_pose_coeffs.shape[0]
         # Get axis angle from PCA components and coefficients
         if self.use_pca:
+            # Remove global rot coeffs
             th_hand_pose_coeffs = th_pose_coeffs[:, self.rot:self.rot +
                                                  self.ncomps]
+            # PCA components --> axis angles
             th_full_hand_pose = th_hand_pose_coeffs.mm(self.th_selected_comps)
+
+            # Concatenate back global rot
             th_full_pose = torch.cat([
                 th_pose_coeffs[:, :self.rot],
                 self.th_hands_mean + th_full_hand_pose
             ], 1)
-            th_pose_map, th_rot_map = th_posemap_axisang(th_full_pose)
-            th_full_pose = th_full_pose.view(batch_size, -1, 3)
-            root_rot = rodrigues_layer.batch_rodrigues(
-                th_full_pose[:, 0]).view(batch_size, 3, 3)
+            if self.root_rot_mode == 'axisang':
+                # compute rotation matrixes from axis-angle while skipping global rotation
+                th_pose_map, th_rot_map = th_posemap_axisang(th_full_pose)
+                th_full_pose = th_full_pose.view(batch_size, -1, 3)
+                root_rot = rodrigues_layer.batch_rodrigues(
+                    th_full_pose[:, 0]).view(batch_size, 3, 3)
+            else:
+                # th_posemap offsets by 3, so add offset or 3 to get to self.rot=6
+                th_pose_map, th_rot_map = th_posemap_axisang(th_full_pose[:, 3:])
+                root_rot = rot6d.compute_rotation_matrix_from_ortho6d(th_full_pose[:, :6])
+                th_full_pose = th_full_pose.view(batch_size, -1, 3)
         else:
             assert th_pose_coeffs.dim() == 4, (
                 'When not self.use_pca, '
