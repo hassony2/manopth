@@ -23,7 +23,8 @@ class ManoLayer(Module):
                  side='right',
                  mano_root='mano/models',
                  use_pca=True,
-                 root_rot_mode='axisang'):
+                 root_rot_mode='axisang',
+                 robust_rot=False):
         """
         Args:
             center_idx: index of center joint in our computations,
@@ -39,6 +40,7 @@ class ManoLayer(Module):
         super().__init__()
 
         self.center_idx = center_idx
+        self.robust_rot = robust_rot
         if root_rot_mode == 'axisang':
             self.rot = 3
         else:
@@ -139,7 +141,10 @@ class ManoLayer(Module):
             else:
                 # th_posemap offsets by 3, so add offset or 3 to get to self.rot=6
                 th_pose_map, th_rot_map = th_posemap_axisang(th_full_pose[:, 3:])
-                root_rot = rot6d.compute_rotation_matrix_from_ortho6d(th_full_pose[:, :6])
+                if self.robust_rot:
+                    root_rot = rot6d.robust_compute_rotation_matrix_from_ortho6d(th_full_pose[:, :6])
+                else:
+                    root_rot = rot6d.compute_rotation_matrix_from_ortho6d(th_full_pose[:, :6])
                 th_full_pose = th_full_pose.view(batch_size, -1, 3)
         else:
             assert th_pose_coeffs.dim() == 4, (
@@ -177,33 +182,73 @@ class ManoLayer(Module):
         th_results = []
 
         root_j = th_j[:, 0, :].contiguous().view(batch_size, 3, 1)
-        th_results.append(th_with_zeros(torch.cat([root_rot, root_j], 2)))
+        root_trans = th_with_zeros(torch.cat([root_rot, root_j], 2))
+        th_results.append(root_trans)
 
-        # Rotate each part
-        for i in range(15):
-            i_val = int(i + 1)
-            joint_rot = th_rot_map[:, (i_val - 1) * 9:i_val *
-                                   9].contiguous().view(batch_size, 3, 3)
-            joint_j = th_j[:, i_val, :].contiguous().view(batch_size, 3, 1)
-            parent = make_list(self.kintree_parents)[i_val]
-            parent_j = th_j[:, parent, :].contiguous().view(batch_size, 3, 1)
-            joint_rel_transform = th_with_zeros(
-                torch.cat([joint_rot, joint_j - parent_j], 2))
-            th_results.append(
-                torch.matmul(th_results[parent], joint_rel_transform))
+        # # Rotate each part
+        # for i in range(15):
+        #     i_val = int(i + 1)
+        #     joint_rot = th_rot_map[:, (i_val - 1) * 9:i_val *
+        #                            9].contiguous().view(batch_size, 3, 3)
+        #     joint_j = th_j[:, i_val, :].contiguous().view(batch_size, 3, 1)
+        #     parent = make_list(self.kintree_parents)[i_val]
+        #     parent_j = th_j[:, parent, :].contiguous().view(batch_size, 3, 1)
+        #     joint_rel_transform = th_with_zeros(
+        #         torch.cat([joint_rot, joint_j - parent_j], 2))
+        #     th_results.append(
+        #         torch.matmul(th_results[parent], joint_rel_transform))
+        all_rots = th_rot_map.view(th_rot_map.shape[0], 15, 3, 3)
+        lev1_idxs = [1, 4, 7, 10, 13]
+        lev2_idxs = [2, 5, 8, 11, 14]
+        lev3_idxs = [3, 6, 9, 12, 15]
+        lev1_rots = all_rots[:, [idx - 1 for idx in lev1_idxs]]
+        lev2_rots = all_rots[:, [idx - 1 for idx in lev2_idxs]]
+        lev3_rots = all_rots[:, [idx - 1 for idx in lev3_idxs]]
+        lev1_j = th_j[:, lev1_idxs]
+        lev2_j = th_j[:, lev2_idxs]
+        lev3_j = th_j[:, lev3_idxs]
+
+        # From base to tips
+        # Get lev1 results
+        all_transforms = [root_trans.unsqueeze(1)]
+        lev1_j_rel = lev1_j - root_j.transpose(1, 2)
+        lev1_rel_transform_flt = th_with_zeros(torch.cat([lev1_rots, lev1_j_rel.unsqueeze(3)], 3).view(-1, 3, 4))
+        root_trans_flt = root_trans.unsqueeze(1).repeat(1, 5, 1, 1).view(root_trans.shape[0] * 5, 4, 4)
+        lev1_flt = torch.matmul(root_trans_flt, lev1_rel_transform_flt)
+        all_transforms.append(lev1_flt.view(all_rots.shape[0], 5, 4, 4))
+
+        # Get lev2 results
+        lev2_j_rel = lev2_j - lev1_j
+        lev2_rel_transform_flt = th_with_zeros(torch.cat([lev2_rots, lev2_j_rel.unsqueeze(3)], 3).view(-1, 3, 4))
+        lev2_flt = torch.matmul(lev1_flt, lev2_rel_transform_flt)
+        all_transforms.append(lev2_flt.view(all_rots.shape[0], 5, 4, 4))
+
+        # Get lev3 results
+        lev3_j_rel = lev3_j - lev2_j
+        lev3_rel_transform_flt = th_with_zeros(torch.cat([lev3_rots, lev3_j_rel.unsqueeze(3)], 3).view(-1, 3, 4))
+        lev3_flt = torch.matmul(lev2_flt, lev3_rel_transform_flt)
+        all_transforms.append(lev3_flt.view(all_rots.shape[0], 5, 4, 4))
+
+        reorder_idxs = [0, 1, 6, 11, 2, 7, 12, 3, 8, 13, 4, 9, 14, 5, 10, 15]
+        reorder_transforms = torch.cat(all_transforms, 1)[:, reorder_idxs]
+        th_results = [val for val in reorder_transforms.transpose(0, 1)]
+
         th_results_global = th_results
 
-        th_results2 = torch.zeros((batch_size, 4, 4, 16),
-                                  dtype=root_j.dtype,
-                                  device=root_j.device)
+        # th_results2 = torch.zeros((batch_size, 4, 4, 16),
+        #                           dtype=root_j.dtype,
+        #                           device=root_j.device)
 
-        for i in range(16):
-            padd_zero = torch.zeros(1, dtype=th_j.dtype, device=th_j.device)
-            joint_j = torch.cat(
-                [th_j[:, i],
-                 padd_zero.view(1, 1).repeat(batch_size, 1)], 1)
-            tmp = torch.bmm(th_results[i], joint_j.unsqueeze(2))
-            th_results2[:, :, :, i] = th_results[i] - th_pack(tmp)
+        # # for i in range(16):
+        #     padd_zero = torch.zeros(1, dtype=th_j.dtype, device=th_j.device)
+        #     joint_j = torch.cat(
+        #         [th_j[:, i],
+        #          padd_zero.view(1, 1).repeat(batch_size, 1)], 1)
+        #     tmp = torch.bmm(th_results[i], joint_j.unsqueeze(2))
+        #     th_results2[:, :, :, i] = th_results[i] - th_pack(tmp)
+        joint_js = torch.cat([th_j, th_j.new_zeros(th_j.shape[0], 16, 1)], 2)
+        tmp2 = torch.matmul(torch.stack(th_results, 1), joint_js.unsqueeze(3))
+        th_results2 = torch.stack(th_results, 3) - torch.cat([tmp2.new_zeros(*tmp2.shape[:2],4,3), tmp2], 3).permute(0, 2, 3, 1)
 
         th_T = torch.matmul(th_results2, self.th_weights.transpose(0, 1))
 

@@ -50,6 +50,7 @@ if __name__ == '__main__':
         rot = 3
     else:
         rot = 6
+    print(rot)
 
     # Generate random pose coefficients
     pose_params = args.rand_mag * torch.rand(args.batch_size, n_components + rot)
