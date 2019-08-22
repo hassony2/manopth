@@ -179,24 +179,10 @@ class ManoLayer(Module):
         # Final T pose with transformation done !
 
         # Global rigid transformation
-        th_results = []
 
         root_j = th_j[:, 0, :].contiguous().view(batch_size, 3, 1)
         root_trans = th_with_zeros(torch.cat([root_rot, root_j], 2))
-        th_results.append(root_trans)
 
-        # # Rotate each part
-        # for i in range(15):
-        #     i_val = int(i + 1)
-        #     joint_rot = th_rot_map[:, (i_val - 1) * 9:i_val *
-        #                            9].contiguous().view(batch_size, 3, 3)
-        #     joint_j = th_j[:, i_val, :].contiguous().view(batch_size, 3, 1)
-        #     parent = make_list(self.kintree_parents)[i_val]
-        #     parent_j = th_j[:, parent, :].contiguous().view(batch_size, 3, 1)
-        #     joint_rel_transform = th_with_zeros(
-        #         torch.cat([joint_rot, joint_j - parent_j], 2))
-        #     th_results.append(
-        #         torch.matmul(th_results[parent], joint_rel_transform))
         all_rots = th_rot_map.view(th_rot_map.shape[0], 15, 3, 3)
         lev1_idxs = [1, 4, 7, 10, 13]
         lev2_idxs = [2, 5, 8, 11, 14]
@@ -230,25 +216,12 @@ class ManoLayer(Module):
         all_transforms.append(lev3_flt.view(all_rots.shape[0], 5, 4, 4))
 
         reorder_idxs = [0, 1, 6, 11, 2, 7, 12, 3, 8, 13, 4, 9, 14, 5, 10, 15]
-        reorder_transforms = torch.cat(all_transforms, 1)[:, reorder_idxs]
-        th_results = [val for val in reorder_transforms.transpose(0, 1)]
-
+        th_results = torch.cat(all_transforms, 1)[:, reorder_idxs]
         th_results_global = th_results
 
-        # th_results2 = torch.zeros((batch_size, 4, 4, 16),
-        #                           dtype=root_j.dtype,
-        #                           device=root_j.device)
-
-        # # for i in range(16):
-        #     padd_zero = torch.zeros(1, dtype=th_j.dtype, device=th_j.device)
-        #     joint_j = torch.cat(
-        #         [th_j[:, i],
-        #          padd_zero.view(1, 1).repeat(batch_size, 1)], 1)
-        #     tmp = torch.bmm(th_results[i], joint_j.unsqueeze(2))
-        #     th_results2[:, :, :, i] = th_results[i] - th_pack(tmp)
         joint_js = torch.cat([th_j, th_j.new_zeros(th_j.shape[0], 16, 1)], 2)
-        tmp2 = torch.matmul(torch.stack(th_results, 1), joint_js.unsqueeze(3))
-        th_results2 = torch.stack(th_results, 3) - torch.cat([tmp2.new_zeros(*tmp2.shape[:2],4,3), tmp2], 3).permute(0, 2, 3, 1)
+        tmp2 = torch.matmul(th_results, joint_js.unsqueeze(3))
+        th_results2 = (th_results - torch.cat([tmp2.new_zeros(*tmp2.shape[:2], 4, 3), tmp2], 3)).permute(0, 2, 3, 1)
 
         th_T = torch.matmul(th_results2, self.th_weights.transpose(0, 1))
 
@@ -261,7 +234,7 @@ class ManoLayer(Module):
 
         th_verts = (th_T * th_rest_shape_h.unsqueeze(1)).sum(2).transpose(2, 1)
         th_verts = th_verts[:, :, :3]
-        th_jtr = torch.stack(th_results_global, dim=1)[:, :, :3, 3]
+        th_jtr = th_results_global[:, :, :3, 3]
         # In addition to MANO reference joints we sample vertices on each finger
         # to serve as finger tips
         if self.side == 'right':
