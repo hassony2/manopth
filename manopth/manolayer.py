@@ -160,7 +160,7 @@ class ManoLayer(Module):
             root_rot = th_pose_rots[:, 0]
 
         # Full axis angle representation with root joint
-        if th_betas is None or bool(torch.norm(th_betas) == 0):
+        if th_betas is None:
             th_v_shaped = torch.matmul(self.th_shapedirs,
                                        self.th_betas.transpose(1, 0)).permute(
                                            2, 0, 1) + self.th_v_template
@@ -238,32 +238,16 @@ class ManoLayer(Module):
         # In addition to MANO reference joints we sample vertices on each finger
         # to serve as finger tips
         if self.side == 'right':
-            tips = torch.stack([
-                th_verts[:, 745], th_verts[:, 317], th_verts[:, 444],
-                th_verts[:, 556], th_verts[:, 673]
-            ],
-                               dim=1)
+            tips = th_verts[:, [745, 317, 444, 556, 673]]
         else:
-            tips = torch.stack([
-                th_verts[:, 745], th_verts[:, 317], th_verts[:, 445],
-                th_verts[:, 556], th_verts[:, 673]
-            ],
-                               dim=1)
+            tips = th_verts[:, [745, 317, 445, 556, 673]]
         if bool(root_palm):
             palm = (th_verts[:, 95] + th_verts[:, 22]).unsqueeze(1) / 2
             th_jtr = torch.cat([palm, th_jtr[:, 1:]], 1)
         th_jtr = torch.cat([th_jtr, tips], 1)
 
         # Reorder joints to match visualization utilities
-        th_jtr = torch.stack([
-            th_jtr[:, 0], th_jtr[:, 13], th_jtr[:, 14], th_jtr[:, 15],
-            th_jtr[:, 16], th_jtr[:, 1], th_jtr[:, 2], th_jtr[:, 3],
-            th_jtr[:, 17], th_jtr[:, 4], th_jtr[:, 5], th_jtr[:, 6],
-            th_jtr[:, 18], th_jtr[:, 10], th_jtr[:, 11], th_jtr[:, 12],
-            th_jtr[:, 19], th_jtr[:, 7], th_jtr[:, 8], th_jtr[:, 9],
-            th_jtr[:, 20]
-        ],
-                             dim=1)
+        th_jtr = th_jtr[:, [0, 13, 14, 15, 16, 1, 2, 3, 17, 4, 5, 6, 18, 10, 11, 12, 19, 7, 8, 9, 20]]
 
         if th_trans is None or bool(torch.norm(th_trans) == 0):
             if self.center_idx is not None:
