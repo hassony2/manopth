@@ -5,9 +5,9 @@ from manopth import rodrigues_layer
 
 def th_posemap_axisang(pose_vectors):
     rot_nb = int(pose_vectors.shape[1] / 3)
-    pose_vec_reshaped = pose_vectors[:, 3:].contiguous().view(-1, 3)
+    pose_vec_reshaped = pose_vectors.view(-1, 3)
     rot_mats = rodrigues_layer.batch_rodrigues(pose_vec_reshaped)
-    rot_mats = rot_mats.view(pose_vectors.shape[0], (rot_nb - 1) * 9)
+    rot_mats = rot_mats.view(pose_vectors.shape[0], rot_nb * 9)
     pose_maps = subtract_flat_id(rot_mats)
     return pose_maps, rot_mats
 
@@ -35,7 +35,7 @@ def subtract_flat_id(rot_mats):
     # Subtracts identity as a flattened tensor
     id_flat = torch.eye(
         3, dtype=rot_mats.dtype, device=rot_mats.device).view(1, 9).repeat(
-            rot_mats.shape[0], 15)
+            rot_mats.shape[0], 16)
     # id_flat.requires_grad = False
     results = rot_mats - id_flat
     return results

@@ -135,17 +135,16 @@ class ManoLayer(Module):
             if self.root_rot_mode == 'axisang':
                 # compute rotation matrixes from axis-angle while skipping global rotation
                 th_pose_map, th_rot_map = th_posemap_axisang(th_full_pose)
-                th_full_pose = th_full_pose.view(batch_size, -1, 3)
-                root_rot = rodrigues_layer.batch_rodrigues(
-                    th_full_pose[:, 0]).view(batch_size, 3, 3)
+                root_rot = th_rot_map[:, :9].view(batch_size, 3, 3)
+                th_rot_map = th_rot_map[:, 9:]
+                th_pose_map = th_pose_map[:, 9:]
             else:
                 # th_posemap offsets by 3, so add offset or 3 to get to self.rot=6
-                th_pose_map, th_rot_map = th_posemap_axisang(th_full_pose[:, 3:])
+                th_pose_map, th_rot_map = th_posemap_axisang(th_full_pose[:, 6:])
                 if self.robust_rot:
                     root_rot = rot6d.robust_compute_rotation_matrix_from_ortho6d(th_full_pose[:, :6])
                 else:
                     root_rot = rot6d.compute_rotation_matrix_from_ortho6d(th_full_pose[:, :6])
-                th_full_pose = th_full_pose.view(batch_size, -1, 3)
         else:
             assert th_pose_coeffs.dim() == 4, (
                 'When not self.use_pca, '
@@ -160,7 +159,7 @@ class ManoLayer(Module):
             root_rot = th_pose_rots[:, 0]
 
         # Full axis angle representation with root joint
-        if th_betas is None:
+        if th_betas is None or th_betas.numel() == 1:
             th_v_shaped = torch.matmul(self.th_shapedirs,
                                        self.th_betas.transpose(1, 0)).permute(
                                            2, 0, 1) + self.th_v_template
