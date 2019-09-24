@@ -13,7 +13,7 @@ from manopth.tensutils import (th_posemap_axisang, th_with_zeros, th_pack,
 class ManoLayer(Module):
     __constants__ = [
         'use_pca', 'rot', 'ncomps', 'ncomps', 'kintree_parents', 'check',
-        'side', 'center_idx'
+        'side', 'center_idx', 'joint_rot_mode'
     ]
 
     def __init__(self,
@@ -24,6 +24,7 @@ class ManoLayer(Module):
                  mano_root='mano/models',
                  use_pca=True,
                  root_rot_mode='axisang',
+                 joint_rot_mode='axisang',
                  robust_rot=False):
         """
         Args:
@@ -36,6 +37,7 @@ class ManoLayer(Module):
             ncomps: number of PCA components form pose space (<45)
             side: 'right' or 'left'
             use_pca: Use PCA decomposition for pose space.
+            joint_rot_mode: 'axisang' or 'rotmat', ignored if use_pca
         """
         super().__init__()
 
@@ -48,6 +50,7 @@ class ManoLayer(Module):
         self.flat_hand_mean = flat_hand_mean
         self.side = side
         self.use_pca = use_pca
+        self.joint_rot_mode = joint_rot_mode
         self.root_rot_mode = root_rot_mode
         if use_pca:
             self.ncomps = ncomps
@@ -87,7 +90,7 @@ class ManoLayer(Module):
                               ) if flat_hand_mean else smpl_data['hands_mean']
         hands_mean = hands_mean.copy()
         th_hands_mean = torch.Tensor(hands_mean).unsqueeze(0)
-        if self.use_pca:
+        if self.use_pca or self.joint_rot_mode == 'axisang':
             # Save as axis-angle
             self.register_buffer('th_hands_mean', th_hands_mean)
             selected_components = hands_components[:ncomps]
@@ -107,7 +110,9 @@ class ManoLayer(Module):
                 th_pose_coeffs,
                 th_betas=torch.zeros(1),
                 th_trans=torch.zeros(1),
-                root_palm=torch.Tensor([0])):
+                root_palm=torch.Tensor([0]),
+                share_betas=torch.Tensor([0]),
+                ):
         """
         Args:
         th_trans (Tensor (batch_size x ncomps)): if provided, applies trans to joints and vertices
@@ -120,12 +125,15 @@ class ManoLayer(Module):
 
         batch_size = th_pose_coeffs.shape[0]
         # Get axis angle from PCA components and coefficients
-        if self.use_pca:
+        if self.use_pca or self.joint_rot_mode == 'axisang':
             # Remove global rot coeffs
             th_hand_pose_coeffs = th_pose_coeffs[:, self.rot:self.rot +
                                                  self.ncomps]
-            # PCA components --> axis angles
-            th_full_hand_pose = th_hand_pose_coeffs.mm(self.th_selected_comps)
+            if self.use_pca:
+                # PCA components --> axis angles
+                th_full_hand_pose = th_hand_pose_coeffs.mm(self.th_selected_comps)
+            else:
+                th_full_hand_pose = th_hand_pose_coeffs
 
             # Concatenate back global rot
             th_full_pose = torch.cat([
@@ -167,6 +175,8 @@ class ManoLayer(Module):
                 batch_size, 1, 1)
 
         else:
+            if share_betas:
+                th_betas = th_betas.mean(0, keepdim=True).expand(th_betas.shape[0], 10)
             th_v_shaped = torch.matmul(self.th_shapedirs,
                                        th_betas.transpose(1, 0)).permute(
                                            2, 0, 1) + self.th_v_template
