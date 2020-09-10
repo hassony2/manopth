@@ -94,6 +94,7 @@ class ManoLayer(Module):
             # Save as axis-angle
             self.register_buffer('th_hands_mean', th_hands_mean)
             selected_components = hands_components[:ncomps]
+            self.register_buffer('th_comps', torch.Tensor(hands_components))
             self.register_buffer('th_selected_comps',
                                  torch.Tensor(selected_components))
         else:
