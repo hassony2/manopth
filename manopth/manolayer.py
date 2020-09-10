@@ -271,4 +271,4 @@ class ManoLayer(Module):
         # Scale to milimeters
         th_verts = th_verts * 1000
         th_jtr = th_jtr * 1000
-        return th_verts, th_jtr, th_j
+        return th_verts, th_jtr, root_trans
