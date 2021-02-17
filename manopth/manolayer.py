@@ -264,6 +264,9 @@ class ManoLayer(Module):
                 center_joint = th_jtr[:, self.center_idx].unsqueeze(1)
                 th_jtr = th_jtr - center_joint
                 th_verts = th_verts - center_joint
+                center_joint = center_joint * 1000
+            else:
+                center_joint = None
         else:
             th_jtr = th_jtr + th_trans.unsqueeze(1)
             th_verts = th_verts + th_trans.unsqueeze(1)
@@ -272,4 +275,4 @@ class ManoLayer(Module):
         # Scale to milimeters
         th_verts = th_verts * 1000
         th_jtr = th_jtr * 1000
-        return th_verts, th_jtr, center_joint * 1000
+        return th_verts, th_jtr, center_joint
