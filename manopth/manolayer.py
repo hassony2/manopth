@@ -267,8 +267,9 @@ class ManoLayer(Module):
         else:
             th_jtr = th_jtr + th_trans.unsqueeze(1)
             th_verts = th_verts + th_trans.unsqueeze(1)
+            center_joint = None
 
         # Scale to milimeters
         th_verts = th_verts * 1000
         th_jtr = th_jtr * 1000
-        return th_verts, th_jtr
+        return th_verts, th_jtr, center_joint * 1000
