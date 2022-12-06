@@ -42,7 +42,7 @@ def quat2mat(quat):
 
 def batch_rodrigues(axisang):
     #axisang N x 3
-    axisang_norm = torch.norm(axisang + 1e-8, p=2, dim=1)
+    axisang_norm = torch.norm(axisang, p=2, dim=1) + 1e-8
     angle = torch.unsqueeze(axisang_norm, -1)
     axisang_normalized = torch.div(axisang, angle)
     angle = angle * 0.5
