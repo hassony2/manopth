@@ -248,9 +248,9 @@ class ManoLayer(Module):
         # In addition to MANO reference joints we sample vertices on each finger
         # to serve as finger tips
         if self.side == 'right':
-            tips = th_verts[:, [745, 317, 444, 556, 673]]
+            tips = th_verts[:, [745, 319, 444, 556, 673]]
         else:
-            tips = th_verts[:, [745, 317, 445, 556, 673]]
+            tips = th_verts[:, [745, 319, 445, 556, 673]]
         if bool(root_palm):
             palm = (th_verts[:, 95] + th_verts[:, 22]).unsqueeze(1) / 2
             th_jtr = torch.cat([palm, th_jtr[:, 1:]], 1)
